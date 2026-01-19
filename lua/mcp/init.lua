@@ -20,7 +20,17 @@ local function ensure_server(cwd)
 	local srv = servers[cwd]
 	if not srv then
 		-- Start new server on random port (0)
-		local srv_handle, port = server.start(0, nil)
+		local srv_handle, port
+		local function on_init()
+			vim.schedule(function()
+				vim.api.nvim_exec_autocmds("User", {
+					pattern = "McpServerReady",
+					data = { cwd = cwd, port = port },
+				})
+			end)
+		end
+		srv_handle, port = server.start(0, nil, on_init)
+
 		if srv_handle then
 			assert(type(port) == "number")
 			srv = {

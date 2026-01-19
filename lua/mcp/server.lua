@@ -52,7 +52,7 @@ local function send_json(client, data)
 	client:write(encoded .. "\n")
 end
 
-local function handle_request(client, request)
+local function handle_request(client, request, on_init)
 	local id = request.id
 	local method = request.method
 	local params = request.params or {}
@@ -83,6 +83,9 @@ local function handle_request(client, request)
 
 	if method == "notifications/initialized" then
 		log_to_file("Client Initialized")
+		if on_init then
+			on_init()
+		end
 		return
 	end
 
@@ -185,7 +188,7 @@ end
 --- @field sessions any[]
 
 --- @return mcp.ServerState, integer
-function M.start(port, token)
+function M.start(port, token, on_init)
 	local server_state = {
 		handle = uv.new_tcp(),
 		sessions = {},
@@ -288,7 +291,7 @@ function M.start(port, token)
 							log_to_file("Raw Line Found: " .. (line:sub(1, 50) .. "..."))
 							local ok, req = pcall(vim.json.decode, line)
 							if ok and req then
-								handle_request(client, req)
+								handle_request(client, req, on_init)
 							else
 								-- Not valid JSON, maybe just whitespace or garbage
 								log_to_file("Invalid JSON line: " .. line)
@@ -314,7 +317,7 @@ function M.start(port, token)
 
 						local ok, req = pcall(vim.json.decode, body)
 						if ok and req then
-							handle_request(client, req)
+							handle_request(client, req, on_init)
 						else
 							log_to_file("LSP Body JSON Decode Error")
 						end
